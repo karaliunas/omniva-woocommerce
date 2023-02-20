@@ -1,0 +1,16 @@
+{
+  "name": "karaliunas/omniva-woocommerce",
+  "description": "",
+  "keywords": ["wordpress", "plugin"],
+  "homepage": "https://github.com/karaliunas/omniva-woocommerce",
+  "authors": [
+    {
+      "name": "Mijora ominva-woocommerce",
+      "homepage": "https://github.com/mijora/omniva-woocommerce"
+    }
+  ],
+  "type": "wordpress-plugin",
+  "require": {
+    "php": ">=7.0"
+  }
+}
