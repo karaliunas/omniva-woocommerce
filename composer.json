@@ -13,5 +13,10 @@
   "require": {
     "php": ">=7.0"
     "mijora/omniva-api": "^1.0.9"
-  }
+  },
+  "autoload": {
+      "files": [
+            "overrides/tcpdf/tcpdf_config.php"
+      ]
+   }
 }
