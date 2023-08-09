@@ -11,7 +11,7 @@
   ],
   "type": "wordpress-plugin",
   "require": {
-    "php": ">=7.0"
+    "php": ">=7.0",
     "mijora/omniva-api": "^1.0.9"
   },
   "autoload": {
