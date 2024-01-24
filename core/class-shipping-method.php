@@ -15,6 +15,7 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
     private $shipping_sets;
     private $methods_asociations;
     private $destinations_countries = array();
+    private $max_coupons_per_page = 1000;
 
     public function __construct()
     {
@@ -112,6 +113,7 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
       foreach ($this->omnivalt_configs['shipping_params'] as $country_code => $ship_params) {
         $countries_options[$country_code] = $country_code . ' - ' . $ship_params['title'];
       }
+      OmnivaLt_Helper::get_available_methods();
       
       $fields = array(
         'enabled' => array(
@@ -241,6 +243,9 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
           'title' => $ship_method_values['title'],
           'type' => 'checkbox',
           'description' => $ship_method_values['description'],
+          'custom_attributes' => array(
+            'data-method' => $ship_method,
+          ),
         );
       }
       $fields['txt_returns'] = array(
@@ -441,6 +446,19 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
         'description' => __('Show barcode image in manifest.', 'omnivalt'),
         'default' => 'yes',
       );
+      $fields['hr_pickup'] = array(
+        'type' => 'hr',
+        'title' => __('Shipment pickup', 'omnivalt'),
+      );
+      $fields['pickup_comment'] = array(
+        'title' => __('Comment to the courier', 'omnivalt'),
+        'type' => 'text',
+        'description' => __('A comment that will be sent with the courier call request', 'omnivalt') . '.<br/><b>' . __('This feature is not working yet', 'omnivalt') . '.</b>',
+        'custom_attributes' => array(
+          'maxlength' => 120,
+          'disabled' => true,
+        ),
+      );
       $fields['hr_debug'] = array(
         'type' => 'hr',
         'title' => __('Debug', 'omnivalt'),
@@ -453,16 +471,8 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
       );
       $fields['debugview_request'] = array(
         'type' => 'debug_window',
-        'files' => OmnivaLt_Debug::get_all_files('request'),
-        'title' => __('Logged requests', 'omnivalt'),
-        'subtitle' => __('Request', 'omnivalt'),
-        'class' => 'omniva_debug'
-      );
-      $fields['debugview_response'] = array(
-        'type' => 'debug_window',
-        'files' => OmnivaLt_Debug::get_all_files('response'),
-        'title' => __('Logged responses', 'omnivalt'),
-        'subtitle' => __('Response', 'omnivalt'),
+        'files' => OmnivaLt_Debug::get_all_files(),
+        'title' => __('Logged communications with API', 'omnivalt'),
         'class' => 'omniva_debug'
       );
       $fields['hr_end'] = array(
@@ -561,7 +571,7 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
         }
 
         $args = array(
-          'posts_per_page'   => -1,
+          'posts_per_page'   => $this->max_coupons_per_page,
           'orderby'          => 'title',
           'order'            => 'asc',
           'post_type'        => 'shop_coupon',
@@ -573,7 +583,7 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
         ?>
         <tr class="row-prices" valign="top">
           <td colspan="2">
-            <div class="prices_box">
+            <div class="prices_box" data-country="<?php echo $value['lang']; ?>">
               <div class="pb-lang">
                 <img src="<?php echo $flag_img_url; ?>" alt="[<?php echo $value['lang']; ?>]">
                 <span><?php echo $value['lang'] . ' ' . __('prices','omnivalt'); ?></span>
@@ -618,11 +628,14 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
                         'desc_name' => $ship_key . '_description',
                       ),
                     );
-                    foreach ( $this->omnivalt_configs['method_params'] as $method_name => $method_values ) {
+                    foreach ( $this->omnivalt_configs['method_params_new'] as $method_name => $method_values ) {
                       if ($ship_key === $method_values['key']) {
                         $params['type'] = $method_name;
                         $params['title'] = $method_values['title'];
-                        $params['enable']['title'] = sprintf(__('Enable %s','omnivalt'), strtolower($method_values['title']));
+                        if ( ! empty($method_values['display_by_country'][$value['lang']]) ) {
+                          $params['title'] = $method_values['display_by_country'][$value['lang']]['title'];
+                        }
+                        $params['enable']['title'] = sprintf(__('Enable %s','omnivalt'), strtolower($params['title']));
                         break;
                       }
                     }
@@ -701,7 +714,7 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
 
       ob_start();
       ?>
-      <div class="block-prices <?php echo $params['type']; ?>">
+      <div class="block-prices <?php echo $params['type']; ?> <?php echo ($params['type'] == 'terminal') ? 'pickup' : ''; ?>">
         <div class="sec-title">
           <?php
           /* -Compatibility with old data- */
@@ -901,6 +914,9 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
               );
               echo ' ' . OmnivaLt_Admin_Html::buildSelectField($html_params);
               ?>
+              <?php if ( count($params['data']['coupons']) >= $this->max_coupons_per_page ) : ?>
+                <p class="description"><?php echo __('NOTE', 'omnivalt') . ': ' . sprintf(__('The website has too many coupons, so only the first %d coupons are displayed', 'omnivalt'), $this->max_coupons_per_page); ?></p>
+              <?php endif; ?>
             </div>
           <?php endif; ?>
         </div>
@@ -1196,6 +1212,7 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
       $field_class = (isset($value['class'])) ? $value['class'] : '';
       $files = (isset($value['files'])) ? $value['files'] : array();
       $files_dir = OmnivaLt_Debug::$_debug_dir;
+      $files_subtitle = (isset($value['subtitle'])) ? $value['subtitle'] : '';
 
       ob_start();
       ?>
@@ -1223,8 +1240,21 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
                   } else {
                     $date = __('Date unknown', 'omnivalt');
                   }
+                  $subtitle = '';
+                  if ( empty($files_subtitle) ) {
+                    $all_subtitles = array(
+                      'request' => __('Request', 'omnivalt'),
+                      'response' => __('Response', 'omnivalt'),
+                    );
+                    foreach ( $all_subtitles as $subtitle_key => $subtitle_value ) {
+                      if ( str_contains($file_data['name'], $subtitle_key) ) {
+                        if ( ! empty($subtitle) ) $subtitle .= '/';
+                        $subtitle .= $subtitle_value;
+                      }
+                    }
+                  }
                   ?>
-                  <span class="date"><?php echo esc_html($value['subtitle']) . ' ' . esc_html($date); ?></span>
+                  <span class="date"><?php echo trim(esc_html($subtitle) . ' ' . esc_html($date)); ?></span>
                   <textarea readonly rows="11" style="width:100%;display:none;"><?php echo $file_content; ?></textarea>
                 </div>
               <?php endforeach; ?>
@@ -1279,11 +1309,11 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
 
     private function add_shipping_rate( $rate_key, $products_for_dim, $weight, $country, $cart_amount, $prices, $package )
     {
-      $method_params = OmnivaLt_Shipmethod_Helper::get_current_method_params($this->omnivalt_configs['method_params'], $rate_key);
+      $method_params = OmnivaLt_Shipmethod_Helper::get_current_method_params($this->omnivalt_configs['method_params_new'], $rate_key);
       if ( empty($method_params) ) {
         return;
       }
-    
+
       $check_restrictions = OmnivaLt_Shipmethod_Helper::check_restrictions($this->settings, $rate_key, $weight, $products_for_dim);
 
       if ( $this->settings['method_' . $rate_key] == 'yes' && $check_restrictions ) {
@@ -1305,10 +1335,15 @@ if ( ! class_exists('Omnivalt_Shipping_Method') ) {
         $amount = OmnivaLt_Shipmethod_Helper::check_amount_free($rate_key, $prices, $amount, $cart_amount);
         $amount = OmnivaLt_Shipmethod_Helper::check_coupon($rate_key, $prices, $amount, $package['applied_coupons']);
 
-        $rate_name = $method_params['title'];
+        $rate_name = $method_params['front_title'];
+        $prefix = $method_params['prefix'];
+        if ( isset($method_params['display_by_country'][$country]) ) {
+          $rate_name = $method_params['display_by_country'][$country]['front_title'];
+          $prefix = $method_params['display_by_country'][$country]['prefix'];
+        }
         $show_prefix_on = array('classic', 'full');
         if ( ! isset($this->settings['label_design']) || (isset($this->settings['label_design']) && in_array($this->settings['label_design'], $show_prefix_on)) ) {
-          $rate_name = 'Omniva ' . strtolower($rate_name);
+          $rate_name = $prefix . ' ' . strtolower($rate_name);
         }
         if ( ! empty($this->settings['custom_label']) ) {
           $custom_labels = json_decode($this->settings['custom_label']);

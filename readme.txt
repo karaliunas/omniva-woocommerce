@@ -5,7 +5,55 @@
 003 'This shipping set does not exist' - There is no desired key in configs 'shipping_sets' section
 004 'The service does not exist for the specified method' - There is no desired key in configs 'shipping_sets' section subsection
 
+== Hooks ==
+omnivalt_label_register_successfully - args: $order_id - shipment successfully registered
+omnivalt_label_register_failed - args: $order_id - failed to register shipment
+
 == Changelog ==
+
+= 1.15.5 =
+- reworked getting settings to avoid an error when the required element is not among the saved settings
+- fixed error when session is null
+- changed Finland terminals provider from Omniva to Matkahuolto
+
+= 1.15.4 =
+- fixed "out of memory" error when the website has too many coupons
+- removed COD payments for Finland Matkahulto terminals: Default WooCommerce COD
+- added LT translations of texts created during the last updates
+
+= 1.15.3 =
+- added new hook omnivalt_label_register_successfully which is fired when label successfully generated
+- added new hook omnivalt_label_register_failed which is fired when failed to generate label
+- updated Omniva API library to v1.0.15
+
+= 1.15.2 =
+- added temporary fix for order size calculation
+- started using terminal-mapping JS library for map
+
+= 1.15.1 =
+- fixed var directory creating
+- moved locations.json file to var/locations directory
+- added Matkahulto parcel terminals for Finland
+- completed the operation of the courier call for the OMX system
+- adapted so that the module could work with different API libraries
+- changed terminals source URL
+- improved display of shipping methods depending on API country
+- improved part of JS code in plugin settings page
+- updated Omniva API library to v1.0.14
+
+= 1.15.0 =
+- fixed error when changing Order status to "Refunded"
+- fixed Omniva data saving every time even though the data is not changed
+- fixed Omniva additional services adding to the shipment
+- fixed error when not exists get_current_screen() function
+- created API library usage for all API functions
+- created the ability to see and cancel courier invitations (works only on OMX system)
+- improved division of orders in the tabs on the "Omniva shipping" page
+- added new tabs "Registered orders" and "Orders ready to ship" on the "Omniva shipping" page
+- changed to display the courier call success message using the default Wordpress message
+- added arrival time display to courier call success notification
+- added the option in product to mark an additional service "Issue to persons at the age of 18+"
+- updated Omniva API library to v1.0.13
 
 = 1.14.2 =
 - fixed error when Order create manualy from admin area
@@ -216,6 +264,7 @@
 
 = 1.5.9 =
 - Fixed terminal select field working in Cart page
+- Fixed terminal name generation based on updated omniva locations file
 
 = 1.5.8 =
 - Updated PDF libraries

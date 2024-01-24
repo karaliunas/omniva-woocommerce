@@ -4,10 +4,10 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit57dfd7cb34ac1281e0b784b169d9c330
+class ComposerStaticInit85bfb87aece1e2c4bfe2ec4218585672
 {
     public static $files = array (
-        'cd68897ab66901821be123d6861c0d78' => __DIR__ . '/../..' . '/overrides/tcpdf/tcpdf_config.php',
+        'e1af0acb87348aa51d89cfb77fc80e82' => __DIR__ . '/..' . '/mijora/omniva-api/overrides/tcpdf/tcpdf_config.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -33,7 +33,6 @@ class ComposerStaticInit57dfd7cb34ac1281e0b784b169d9c330
     );
 
     public static $classMap = array (
-        'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
         'Datamatrix' => __DIR__ . '/..' . '/tecnickcom/tcpdf/include/barcodes/datamatrix.php',
         'FPDF' => __DIR__ . '/..' . '/setasign/fpdf/fpdf.php',
         'PDF417' => __DIR__ . '/..' . '/tecnickcom/tcpdf/include/barcodes/pdf417.php',
@@ -54,9 +53,9 @@ class ComposerStaticInit57dfd7cb34ac1281e0b784b169d9c330
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit57dfd7cb34ac1281e0b784b169d9c330::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit57dfd7cb34ac1281e0b784b169d9c330::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit57dfd7cb34ac1281e0b784b169d9c330::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit85bfb87aece1e2c4bfe2ec4218585672::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit85bfb87aece1e2c4bfe2ec4218585672::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit85bfb87aece1e2c4bfe2ec4218585672::$classMap;
 
         }, null, ClassLoader::class);
     }

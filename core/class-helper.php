@@ -68,6 +68,83 @@ class OmnivaLt_Helper
     return false;
   }
 
+  public static function get_all_api_plans()
+  {
+    $available_shippings = OmnivaLt_Core::get_configs('shipping_available');
+
+    return array_keys($available_shippings);
+  }
+
+  public static function get_api_plan( $api_country = false, $get_by_plan = false )
+  {
+    $associations = array(
+      'LT' => 'baltic',
+      'EE' => 'estonia',
+    );
+    $default_country = 'LT';
+
+    if ( $get_by_plan ) {
+      foreach ( $associations as $country => $plan ) {
+        if ( $api_country == $plan ) {
+          return $country;
+        }
+      }
+
+      return $default_country;
+    }
+
+    if ( ! $api_country ) {
+      $settings = OmnivaLt_Core::get_settings();
+      $api_country = (! empty($settings['api_country'])) ? $settings['api_country'] : $default_country;
+    }
+
+    return $associations[$api_country] ?? $associations[$default_country];
+
+    switch ( $api_country ) {
+      case 'LT':
+        $api_plan = 'baltic';
+        break;
+      case 'EE':
+        $api_plan = 'estonia';
+        break;
+      default:
+        $api_plan = 'baltic';
+    }
+
+    return $api_plan;
+  }
+
+  public static function get_available_methods()
+  {
+    $configs = OmnivaLt_Core::get_configs();
+    $settings = OmnivaLt_Core::get_settings();
+
+    $api_plan = self::get_api_plan();
+    $all_countries = array_keys($configs['shipping_params']);
+
+    $available_methods = array();
+    foreach ( $all_countries as $country ) {
+      $available_methods[$country] = $configs['shipping_params'][$country];
+      unset($available_methods[$country]['methods']);
+      $available_methods[$country]['all_methods'] = $configs['shipping_params'][$country]['methods'];
+      $available_methods[$country]['available_methods'] = array();
+      if ( isset($configs['shipping_available'][$api_plan][$country]) ) {
+        $available_methods[$country]['available_methods'] = $configs['shipping_available'][$api_plan][$country];
+      }
+      
+      $shipping_sets = array();
+      foreach ( $configs['shipping_params'][$country]['shipping_sets'] as $shipping_set_country => $shipping_set_plan ) {
+        if ( $shipping_set_country == 'call' ) {
+          continue;
+        }
+        $shipping_sets[$shipping_set_country] = $configs['shipping_sets'][$shipping_set_plan];
+      }
+      $available_methods[$country]['shipping_sets'] = $shipping_sets;
+    }
+
+    return $available_methods;
+  }
+
   public static function get_methods_asociations()
   {
     $asociations = array();
@@ -126,15 +203,73 @@ class OmnivaLt_Helper
     return $allowed_methods;
   }
 
+  public static function get_courier_calls()
+  {
+    $configs = OmnivaLt_Core::get_configs();
+
+    $current_calls = get_option($configs['meta_keys']['courier_calls'], array());
+    if ( ! empty($current_calls) && is_array($current_calls) ) {
+      foreach ( $current_calls as $call_key => $call_values ) {
+        if ( strtotime(current_time('Y-m-d H:i:s')) > strtotime($call_values['end']) ) {
+          unset($current_calls[$call_key]);
+        }
+      }
+    }
+
+    return (! empty($current_calls)) ? $current_calls : array();
+  }
+
+  public static function update_courier_calls( $add_new_call = array() )
+  {
+    $configs = OmnivaLt_Core::get_configs();
+    $current_calls = self::get_courier_calls();
+
+    if ( ! empty($add_new_call) ) {
+      $current_calls[] = $add_new_call;
+      update_option($configs['meta_keys']['courier_calls'], array_values($current_calls));
+    }
+
+    return $current_calls;
+  }
+
+  public static function remove_courier_calls( $call_id )
+  {
+    $configs = OmnivaLt_Core::get_configs();
+    $current_calls = self::get_courier_calls();
+
+    foreach ( $current_calls as $call_key => $call_values ) {
+      if ( $call_values['id'] == $call_id ) {
+        unset($current_calls[$call_key]);
+      }
+    }
+
+    update_option($configs['meta_keys']['courier_calls'], array_values($current_calls));
+  }
+
   public static function add_msg( $msg, $type )
   {
-    if (!session_id()) {
+    if ( ! session_id() ) {
       session_start();
     }
-    if (!isset($_SESSION['omnivalt_notices'])) {
+    if ( ! isset($_SESSION['omnivalt_notices']) ) {
       $_SESSION['omnivalt_notices'] = array();
     }
     $_SESSION['omnivalt_notices'][] = array('msg' => $msg, 'type' => $type);
+  }
+
+  public static function show_notices()
+  {
+    if ( ! session_id() ) {
+      session_start();
+    }
+    if ( is_array($_SESSION) && array_key_exists('omnivalt_notices', $_SESSION) ) {
+      foreach ( $_SESSION['omnivalt_notices'] as $notice ) {
+        $wp_notices = array('error', 'warning', 'success', 'info');
+        $classes = (in_array($notice['type'], $wp_notices)) ? 'notice notice-' . $notice['type'] : $notice['type'];
+        echo '<div class="' . $classes . '"><p>' . $notice['msg'] . '</p></div>';
+      }
+      unset( $_SESSION['omnivalt_notices'] );
+    }
   }
 
   public static function get_formated_time( $value, $value_if_not )
@@ -345,11 +480,38 @@ class OmnivaLt_Helper
 
   public static function is_omniva_method( $method_id )
   {
-    $configs = OmnivaLt_Core::get_configs();
+    $all_methods = OmnivaLt_Core::get_configs('method_params');
 
-    foreach ( $configs['method_params'] as $method_key => $method_values ) {
-      if ( $method_id == 'omnivalt_' . $method_values['key'] ) {
+    foreach ( $all_methods as $method_key => $method_values ) {
+      if ( $method_id == self::get_omniva_method_shipping_id($method_values['key']) ) {
         return true;
+      }
+    }
+
+    return false;
+  }
+
+  public static function get_omniva_method_shipping_id( $key )
+  {
+    $found_key = $key;
+
+    $all_methods = OmnivaLt_Core::get_configs('method_params');
+    foreach ( $all_methods as $method_key => $method ) {
+      if ( $key == $method_key || $key == $method['key'] ) {
+        $found_key = 'omnivalt_' . $method['key'];
+        break;
+      }
+    }
+
+    return $found_key;
+  }
+
+  public static function get_omniva_method_by_key( $key )
+  {
+    $all_methods = OmnivaLt_Core::get_configs('method_params_new');
+    foreach ( $all_methods as $method_key => $method ) {
+      if ( $key == $method['key'] ) {
+        return $method;
       }
     }
 
@@ -377,5 +539,20 @@ class OmnivaLt_Helper
     }
 
     return $meta_query_params;
+  }
+
+  public static function custom_tip( $text )
+  {
+    ob_start();
+    ?>
+    <div class="omnivalt-tip noselect">
+      <span class="dashicons dashicons-info"></span>
+      <span class="tip-text"><?php echo $text; ?></span>
+    </div>
+    <?php
+    $html = ob_get_contents();
+    ob_end_clean();
+
+    return $html;
   }
 }
